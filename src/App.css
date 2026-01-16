@@ -1,0 +1,18 @@
+/* 최적화 검색 섹션 */
+.optimize-section {
+  padding: 16px;
+}
+
+.optimize-btn {
+  width: 100%;
+}
+
+.optimize-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 결과 영역 래퍼 */
+.results-wrapper {
+  margin-top: 24px;
+}

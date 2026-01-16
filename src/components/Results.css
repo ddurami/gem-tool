@@ -1,0 +1,201 @@
+/* 결과 섹션 타이틀 */
+.results-section .card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 총 전투력 상승률 */
+.total-cp {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* 빈 결과 상태 */
+.empty-result {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 48px 32px;
+  font-size: 14px;
+}
+
+/* 결과 그리드 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+
+/* 결과 카드 */
+.result-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 결과 카드 헤더 */
+.result-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.core-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.core-grade {
+  font-size: 11px;
+}
+
+/* 결과 통계 */
+.result-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.stat-label {
+  color: var(--text-muted);
+}
+
+.stat-value {
+  color: var(--text-primary);
+}
+
+/* 강조 통계값 (포인트 색상) */
+.stat-value.stat-accent {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* 장착된 젬 영역 */
+.gem-slots {
+  flex: 1;
+  border-top: 1px solid var(--border-light);
+  padding-top: 10px;
+}
+
+.gem-slots-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.no-gems {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 12px 0;
+}
+
+/* 젬 슬롯 */
+.gem-slot {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.gem-slot:last-child {
+  margin-bottom: 0;
+}
+
+/* 젬 슬롯 행 */
+.gem-slot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.gem-slot-row:last-child {
+  margin-bottom: 0;
+}
+
+.gem-slot-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* 젬 전투력 상승률 */
+.gem-slot-cp {
+  font-size: 12px;
+  color: var(--accent);
+  text-align: right;
+}
+
+/* 젬 상세 정보 */
+.gem-slot-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.gem-slot-detail:first-child {
+  text-align: left;
+}
+
+/* 코어 총 전투력 상승률 */
+.result-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.result-total-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.result-total-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* 반응형 */
+@media (max-width: 1400px) {
+  .results-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .results-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+}

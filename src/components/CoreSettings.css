@@ -1,0 +1,78 @@
+/* 코어 그리드 */
+.cores-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* 코어 카드 */
+.core-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.core-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.core-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.core-capacity {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.core-capacity strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 등급 선택 버튼 */
+.grade-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.grade-selector .btn {
+  flex: 1;
+  padding: 0 4px;
+}
+
+/* 1티어 옵션 선택 */
+.tier1-selector {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.tier1-selector .btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.tier1-selector .btn {
+  flex: 1;
+  padding: 0 4px;
+}
+
+/* 반응형 */
+@media (max-width: 900px) {
+  .cores-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .cores-grid {
+    grid-template-columns: 1fr;
+  }
+}

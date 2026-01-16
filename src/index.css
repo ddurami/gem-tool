@@ -1,0 +1,391 @@
+/* CSS 변수 - 테마 시스템 */
+:root {
+  /* 포인트 컬러 */
+  --accent: #7c6b9e;
+  --accent-hover: #6a5a8a;
+  --accent-light: #9b8cb8;
+
+  /* 삭제/초기화 버튼 색상 */
+  --danger: #c75050;
+  --danger-hover: #a03030;
+
+  /* 라이트 모드 색상 */
+  --bg-primary: #f8f8fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f5;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a5e;
+  --text-muted: #8a8a9e;
+  --border: #d8d8e5;
+  --border-light: #e8e8f0;
+
+  /* 버튼 상태 */
+  --btn-bg: #e8e8f0;
+  --btn-bg-hover: #d8d8e5;
+  --btn-bg-active: var(--accent);
+  --btn-text-active: #ffffff;
+
+  /* 탭 색상 */
+  --tab-inactive-bg: var(--bg-tertiary);
+  --tab-active-bg: var(--accent);
+  --tab-active-text: #ffffff;
+
+  /* 비활성화 상태 */
+  --btn-disabled-bg: #e0e0e8;
+  --btn-disabled-text: #a0a0b0;
+  --accent-disabled: #a99bbe;
+  --danger-disabled: #a07070;
+
+  /* 카드 그림자 */
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* 셀렉트박스 간격 */
+  --select-pad: 8px;
+  --select-arrow: 12px;
+  --select-gap: 8px;
+}
+
+/* 다크 모드 */
+[data-theme="dark"] {
+  --bg-primary: #16161e;
+  --bg-secondary: #1e1e28;
+  --bg-tertiary: #26263a;
+  --text-primary: #e8e8f0;
+  --text-secondary: #b8b8c8;
+  --text-muted: #6a6a7e;
+  --border: #36364a;
+  --border-light: #2a2a3e;
+
+  --btn-bg: #2a2a3e;
+  --btn-bg-hover: #36364a;
+
+  --tab-inactive-bg: var(--bg-tertiary);
+
+  --btn-disabled-bg: #2a2a3a;
+  --btn-disabled-text: #5a5a6a;
+  --accent-disabled: #5a5070;
+  --danger-disabled: #5a4040;
+
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 리셋 & 기본 스타일 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* 레이아웃 */
+.app-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px;
+  padding-bottom: 80px;
+}
+
+.page-title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 32px;
+}
+
+/* 메인 레이아웃 그리드 */
+.main-layout {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  height: 100%;
+}
+
+.right-column > * {
+  min-height: 0;
+}
+
+/* 카드 기본 스타일 */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* 통일 버튼 - 32px 높이 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.btn.active {
+  background: var(--btn-bg-active);
+  color: var(--btn-text-active);
+}
+
+.btn:disabled {
+  background: var(--btn-disabled-bg);
+  color: var(--btn-disabled-text);
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* 강조 버튼 (저장, 불러오기) */
+.btn-accent {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn-accent:hover {
+  background: var(--accent-hover);
+}
+
+.btn-accent:disabled {
+  background: var(--accent-disabled);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 위험 버튼 (삭제) */
+.btn-danger {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+
+.btn-danger:disabled {
+  background: var(--danger-disabled);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 아이콘 버튼 - 투명 배경 */
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  display: block;
+}
+
+/* 버튼 그룹 */
+.btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 입력 & 셀렉트박스 */
+.select-base {
+  height: 32px;
+  padding: 0 calc(var(--select-pad) + var(--select-arrow) + var(--select-gap)) 0
+    var(--select-pad);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8a9e' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--select-pad) center;
+}
+
+.select-base:focus {
+  border-color: var(--accent);
+}
+
+.select-base:disabled {
+  background-color: var(--btn-disabled-bg);
+  color: var(--btn-disabled-text);
+  cursor: not-allowed;
+}
+
+/* 테마 토글 버튼 */
+.theme-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.theme-toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: var(--text-secondary);
+  transition: fill 0.15s ease;
+}
+
+.theme-toggle:hover svg {
+  fill: var(--accent);
+}
+
+/* 스크롤 영역 - 항상 스크롤바 표시 */
+.scroll-area {
+  overflow-y: scroll;
+  padding-right: 8px;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* 폼 행 */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 100px;
+}
+
+/* 뱃지 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* 반응형 */
+@media (max-width: 1100px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+}
