@@ -6,10 +6,15 @@ import GemSettings from "./components/GemSettings";
 import Presets from "./components/Presets";
 import Results from "./components/Results";
 import { optimizeArkGrid } from "./optimizer/OptimizerDeal.js";
-import { optimizeArkGridSupport } from "./optimizer/OptimizerSupport.js";
 import "./App.css";
 
-const STORAGE_KEY = "arkgrid-current-state";
+// 로컬 스토리지 키
+const STORAGE_KEYS = {
+  ROLE: "role",
+  CORE: "core",
+  GEM: "gem",
+};
+const LEGACY_STORAGE_KEY = "arkgrid-current-state";
 
 const CORE_ID_TO_TYPE = {
   "order-sun": "질서의 해",
@@ -25,43 +30,115 @@ const getDefaultCores = (role = "dealer") => {
   const tier1Moon = role === "dealer" ? "불타는 일격" : "낙인의 흔적";
 
   return {
-    "order-sun": { grade: "유물", tier1Option: "", isTier1: false },
-    "order-moon": { grade: "유물", tier1Option: "", isTier1: false },
-    "order-star": { grade: "유물", tier1Option: "", isTier1: false },
-    "chaos-sun": { grade: "유물", tier1Option: tier1Sun, isTier1: true },
-    "chaos-moon": { grade: "유물", tier1Option: tier1Moon, isTier1: true },
-    "chaos-star": { grade: "유물", tier1Option: "", isTier1: false },
+    "order-sun": { grade: "유물", subName: "", isTier1: false },
+    "order-moon": { grade: "유물", subName: "", isTier1: false },
+    "order-star": { grade: "유물", subName: "", isTier1: false },
+    "chaos-sun": { grade: "유물", subName: tier1Sun, isTier1: true },
+    "chaos-moon": { grade: "유물", subName: tier1Moon, isTier1: true },
+    "chaos-star": { grade: "유물", subName: "", isTier1: false },
   };
 };
 
-const loadSavedState = () => {
+// 로컬 스토리지에서 개별 값 로드
+const loadFromStorage = (key, defaultValue) => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error(`Failed to load ${key}:`, e);
+  }
+  return defaultValue;
+};
+
+// 코어/젬 데이터 마이그레이션 (기존 저장값 유지)
+const normalizeCores = (cores, role) => {
+  if (!cores) return getDefaultCores(role);
+  const base = getDefaultCores(role);
+  const next = { ...base, ...cores };
+  Object.keys(next).forEach((key) => {
+    const core = next[key];
+    if (!core) return;
+    if (core.subName === undefined && core.tier1Option !== undefined) {
+      core.subName = core.tier1Option || "";
+    }
+    if (core.isTier1 === undefined) {
+      core.isTier1 = false;
+    }
+    if (!core.grade) {
+      core.grade = base[key]?.grade || "유물";
+    }
+  });
+  return next;
+};
+
+const normalizeGems = (gems = []) => {
+  return gems.map((g, idx) => {
+    const opt1Type = g.opt1Type ?? g.optionNameA ?? "";
+    const opt1Lvl = g.opt1Lvl ?? g.optionLevelA ?? 0;
+    const opt2Type = g.opt2Type ?? g.optionNameB ?? "";
+    const opt2Lvl = g.opt2Lvl ?? g.optionLevelB ?? 0;
+    return {
+      ...g,
+      opt1Type,
+      opt1Lvl,
+      opt2Type,
+      opt2Lvl,
+      name: g.name || `${g.type}의 젬 #${g.gemNum || idx + 1}`,
+    };
+  });
+};
+
+const migrateLegacyStorage = () => {
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!legacy) return;
+  try {
+    const parsed = JSON.parse(legacy);
+    const role = parsed?.role || "dealer";
+    if (!localStorage.getItem(STORAGE_KEYS.ROLE)) {
+      localStorage.setItem(STORAGE_KEYS.ROLE, JSON.stringify(role));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.CORE) && parsed?.cores) {
+      const normalized = normalizeCores(parsed.cores, role);
+      localStorage.setItem(STORAGE_KEYS.CORE, JSON.stringify(normalized));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.GEM) && parsed?.gems) {
+      const normalized = normalizeGems(parsed.gems);
+      localStorage.setItem(STORAGE_KEYS.GEM, JSON.stringify(normalized));
     }
   } catch (e) {
-    console.error("Failed to load saved state:", e);
+    console.error("Failed to migrate legacy state:", e);
   }
-  return null;
 };
 
 export default function App() {
-  const savedState = loadSavedState();
+  migrateLegacyStorage();
+  // 로컬 스토리지에서 개별 상태 로드
+  const savedRole = loadFromStorage(STORAGE_KEYS.ROLE, "dealer");
+  const savedCores = loadFromStorage(STORAGE_KEYS.CORE, null);
+  const savedGems = loadFromStorage(STORAGE_KEYS.GEM, []);
 
-  const [role, setRole] = useState(savedState?.role || "dealer");
+  const [role, setRole] = useState(savedRole);
   const [cores, setCores] = useState(
-    savedState?.cores || getDefaultCores(savedState?.role || "dealer")
+    normalizeCores(savedCores, savedRole)
   );
-  const [gems, setGems] = useState(savedState?.gems || []);
+  const [gems, setGems] = useState(normalizeGems(savedGems));
   const [result, setResult] = useState(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
-  // 상태 변경시 로컬 스토리지에 자동 저장
+  // 역할 변경시 로컬 스토리지에 저장
   useEffect(() => {
-    const state = { cores, gems, role };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [cores, gems, role]);
+    localStorage.setItem(STORAGE_KEYS.ROLE, JSON.stringify(role));
+  }, [role]);
+
+  // 코어 변경시 로컬 스토리지에 저장
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CORE, JSON.stringify(cores));
+  }, [cores]);
+
+  // 젬 변경시 로컬 스토리지에 저장
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.GEM, JSON.stringify(gems));
+  }, [gems]);
 
   // 역할 변경시 혼돈의 해/달 1티어 옵션 업데이트
   useEffect(() => {
@@ -72,12 +149,12 @@ export default function App() {
       ...prev,
       "chaos-sun": {
         ...prev["chaos-sun"],
-        tier1Option: tier1Sun,
+        subName: tier1Sun,
         isTier1: true,
       },
       "chaos-moon": {
         ...prev["chaos-moon"],
-        tier1Option: tier1Moon,
+        subName: tier1Moon,
         isTier1: true,
       },
     }));
@@ -86,25 +163,23 @@ export default function App() {
   const handleOptimize = useCallback(() => {
     setIsOptimizing(true);
 
-    const inputCores = Object.entries(cores).map(([id, data]) => ({
-      type: CORE_ID_TO_TYPE[id],
-      grade: data.grade,
-      isTier1: data.isTier1 || false,
-    }));
+    const inputCores = Object.keys(CORE_ID_TO_TYPE).map((id) => {
+      const data = cores[id] || getDefaultCores(role)[id];
+      return {
+        type: CORE_ID_TO_TYPE[id],
+        grade: data.grade,
+        subName: data.subName || "",
+      };
+    });
 
     const inputGems = gems.map((gem) => ({ ...gem }));
 
     setTimeout(() => {
       try {
-        let optimizeResult;
-        if (role === "dealer") {
-          optimizeResult = optimizeArkGrid(inputCores, inputGems);
-        } else {
-          optimizeResult = optimizeArkGridSupport(inputCores, inputGems);
-        }
+        const optimizeResult = optimizeArkGrid(inputCores, inputGems);
         setResult(optimizeResult);
       } catch (error) {
-        console.error("Optimization failed:", error);
+        console.error("최적화 실패:", error);
         setResult(null);
       }
       setIsOptimizing(false);
@@ -112,9 +187,9 @@ export default function App() {
   }, [cores, gems, role]);
 
   const handleLoadPreset = useCallback((preset) => {
-    setCores(preset.cores);
-    setGems(preset.gems);
-    setRole(preset.role);
+    setCores(normalizeCores(preset.cores, preset.role || "dealer"));
+    setGems(normalizeGems(preset.gems || []));
+    setRole(preset.role || "dealer");
     setResult(null);
   }, []);
 

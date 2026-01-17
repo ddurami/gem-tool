@@ -43,7 +43,7 @@ export default function CoreSettings({ cores, setCores, role, onReset }) {
 
     setCores((prev) => ({
       ...prev,
-      [coreId]: { ...prev[coreId], tier1Option: optionName, isTier1 },
+      [coreId]: { ...prev[coreId], subName: optionName, isTier1 },
     }));
   };
 
@@ -96,7 +96,7 @@ export default function CoreSettings({ cores, setCores, role, onReset }) {
                       <button
                         key={option}
                         className={`btn ${
-                          coreState.tier1Option === option ? "active" : ""
+                          coreState.subName === option ? "active" : ""
                         }`}
                         onClick={() => handleTier1Change(core.id, option)}
                       >

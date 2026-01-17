@@ -28,9 +28,10 @@ export default function Results({ result, cores }) {
     );
   }
 
+  // 소수점 셋째자리 반올림하여 둘째자리까지 표시
   const formatPercent = (value) => {
     const num = parseFloat(value);
-    return (Math.floor(num * 100) / 100).toFixed(2);
+    return (Math.round(num * 100) / 100).toFixed(2);
   };
 
   const getCoreCapacity = (coreName) => {
@@ -101,18 +102,19 @@ export default function Results({ result, cores }) {
                     <div key={gIdx} className="gem-slot">
                       <div className="gem-slot-row">
                         <span className="gem-slot-name">{gem.name}</span>
-                        <span className="gem-slot-cp">{gem.cpRate}</span>
+                        <span className="gem-slot-cp">
+                          {formatPercent(gem.cpRate)}%
+                        </span>
                       </div>
                       <div className="gem-slot-row">
                         <span className="gem-slot-detail">
                           의지력 {gem.cost}
                         </span>
                         <span className="gem-slot-detail">
-                          {gem.optionNameA
+                          {gem.opt1Type
                             ? `${
-                                OPTION_DISPLAY[gem.optionNameA] ||
-                                gem.optionNameA
-                              } ${gem.optionLevelA}`
+                                OPTION_DISPLAY[gem.opt1Type] || gem.opt1Type
+                              } ${gem.opt1Lvl}`
                             : "-"}
                         </span>
                       </div>
@@ -121,11 +123,10 @@ export default function Results({ result, cores }) {
                           포인트 {gem.point}
                         </span>
                         <span className="gem-slot-detail">
-                          {gem.optionNameB
+                          {gem.opt2Type
                             ? `${
-                                OPTION_DISPLAY[gem.optionNameB] ||
-                                gem.optionNameB
-                              } ${gem.optionLevelB}`
+                                OPTION_DISPLAY[gem.opt2Type] || gem.opt2Type
+                              } ${gem.opt2Lvl}`
                             : "-"}
                         </span>
                       </div>

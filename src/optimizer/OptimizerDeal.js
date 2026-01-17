@@ -1,369 +1,334 @@
 /**
- * Optimizer.js
- * 로스트아크 아크그리드 젬 배치 최적화 로직 (딜러 전용)
- * * [Input Specs]
- * 1. inputCores: Array
- * {
- * type: string,   // "질서의 해", "혼돈의 달" 등
- * grade: string,  // "영웅", "전설", "유물", "고대"
- * isTier1: boolean // 혼돈의 해/달인 경우 1티어(현란한 공격, 불타는 일격) 여부
- * }
- * * 2. inputGems: Array
- * {
- * id: string | number, // 고유 식별자 (UUID 등)
- * type: string,        // "질서" 또는 "혼돈"
- * gemNum: number,      // 인게임/UI상 보여지는 번호 (ex: "질서의 젬 #5"의 5)
- * cost: number,
- * point: number,
- * optionNameA: string, // "공격력", "추가 피해", "보스 피해", "낙인력" 등 풀네임
- * optionLevelA: number,
- * optionNameB: string,
- * optionLevelB: number
- * }
+ * 아크그리드 딜러용 최적화 로직
+ * - 우선순위: 17/14/10 포인트 구간 달성 최우선 보장
+ * - 최적화: 동일 구간 내에서 전투력(곱연산) 최대화
+ * - 검증: 의지력 초과, 젬 중복 사용 차단
  */
 
-// ==========================================
-// 1. 상수 및 설정
-// ==========================================
+const CORE_CAPACITY = { "영웅": 9, "전설": 12, "유물": 15, "고대": 17 };
 
-const GRADE_CAPACITY = {
-  영웅: 9,
-  전설: 12,
-  유물: 15,
-  고대: 17,
-};
-
-// 딜러 유효 옵션 (이 외에는 전투력 계산 시 0 처리)
-// 줄임말 없이 풀네임 사용
-const DEALER_OPTS = ["공격력", "추가 피해", "보스 피해"];
-
-// 옵션별 레벨당 수치 (딜러 기준)
-// 서폿 옵션은 로직 내에서 자동 0 처리됨
-const OPT_FACTOR = {
-  공격력: 4 / 120,
+// 젬 효율 (퍼센트 단위)
+const GEM_COEFF_PCT = {
+  "공격력": 4 / 120,
   "추가 피해": 7 / 120,
   "보스 피해": 10 / 120,
+    "낙인력": 0, "아군 피해 강화": 0, "아군 공격 강화": 0
 };
 
-// 포인트별 코어 전투력 증가량 (%)
-const CORE_TABLES = {
-  ORDER_SUN_MOON: {
-    points: [10, 14, 17, 18, 19, 20],
-    values: [1.5, 4.0, 7.5, 7.67, 7.83, 8.0],
-  },
-  ORDER_STAR: {
-    points: [10, 14, 17, 18, 19, 20],
-    values: [1.0, 2.5, 4.5, 4.67, 4.83, 5.0],
-  },
-  CHAOS_TIER1: {
-    // 현란한 공격, 불타는 일격
-    points: [10, 14, 17, 18, 19, 20],
-    values: [0.5, 1.0, 2.5, 2.67, 2.83, 3.0],
-  },
-  CHAOS_NORMAL: {
-    // 그 외
-    points: [10, 14, 17, 18, 19, 20],
-    values: [0, 0.5, 1.5, 1.67, 1.83, 2.0],
-  },
-  CHAOS_STAR: {
-    points: [10, 14, 17, 18, 19, 20],
-    values: [0.5, 1.0, 2.5, 2.67, 2.83, 3.0],
-  },
-};
+// 코어 포인트 테이블
+const ORDER_SUN_MOON = { 10: 1.50, 14: 4.00, 17: 7.50, 18: 7.67, 19: 7.83, 20: 8.00 };
+const ORDER_STAR = { 10: 1.00, 14: 2.50, 17: 4.50, 18: 4.67, 19: 4.83, 20: 5.00 };
+const CHAOS_NAMED = { 10: 0.50, 14: 1.00, 17: 2.50, 18: 2.67, 19: 2.83, 20: 3.00 };
+const CHAOS_OTHER = { 10: 0, 14: 0.50, 17: 1.50, 18: 1.67, 19: 1.83, 20: 2.00 };
+const CHAOS_STAR = { 10: 0.50, 14: 1.00, 17: 2.50, 18: 2.67, 19: 2.83, 20: 3.00 };
 
-// ==========================================
-// 2. 내부 계산 함수
-// ==========================================
-
-function getCoreBonusPercent(core, point) {
-  let table;
-
-  if (core.type.includes("질서")) {
-    if (core.type.includes("별")) table = CORE_TABLES.ORDER_STAR;
-    else table = CORE_TABLES.ORDER_SUN_MOON;
-  } else {
-    if (core.type.includes("별")) table = CORE_TABLES.CHAOS_STAR;
-    else
-      table = core.isTier1 ? CORE_TABLES.CHAOS_TIER1 : CORE_TABLES.CHAOS_NORMAL;
-  }
-
-  let val = 0;
-  for (let i = table.points.length - 1; i >= 0; i--) {
-    if (point >= table.points[i]) {
-      val = table.values[i];
-      // 고대 등급 17P 이상 시 +1.00% 추가
-      if (core.grade === "고대" && point >= 17) {
-        val += 1.0;
-      }
-      break;
-    }
-  }
-  return val;
-}
-
-// 우선순위 점수: 17P(1순위) >>> 14P > 10P
-function getPriorityScore(grade, point) {
-  const BIG_SCORE = 1000000;
-
-  if (grade === "유물" || grade === "고대") {
-    if (point >= 17) return BIG_SCORE * 4;
-    if (point >= 14) return BIG_SCORE * 3;
-    if (point >= 10) return BIG_SCORE * 2;
-  } else if (grade === "전설") {
-    if (point >= 14) return BIG_SCORE * 3;
-    if (point >= 10) return BIG_SCORE * 2;
-  } else if (grade === "영웅") {
-    if (point >= 10) return BIG_SCORE * 2;
-  }
-  return 0;
-}
-
-function getGemOptRate(optName, level) {
-  const factor = OPT_FACTOR[optName] || 0; // 딜러 유효 옵션 아니면 0
-  return factor * level;
-}
-
-// ==========================================
-// 3. 메인 로직
-// ==========================================
-
-export function optimizeArkGrid(inputCores, inputGems) {
-  // 1. 코어 정렬 및 분류
-  const targetOrder = [
-    "질서의 해",
-    "질서의 달",
-    "질서의 별",
-    "혼돈의 해",
-    "혼돈의 달",
-    "혼돈의 별",
-  ];
-
-  const sortedCores = [];
-  targetOrder.forEach((type) => {
-    const found = inputCores.find(
-      (c) => c.type === type || c.type.includes(type)
-    );
-    if (found) sortedCores.push(found);
-  });
-
-  const orderCores = sortedCores.filter((c) => c.type.includes("질서"));
-  const chaosCores = sortedCores.filter((c) => c.type.includes("혼돈"));
-
-  // 2. 젬 분류 (type 필드 기준)
-  // inputGems는 배열이라고 가정
-  const orderGems = inputGems.filter((g) => g.type === "질서");
-  const chaosGems = inputGems.filter((g) => g.type === "혼돈");
-
-  // --- Solver ---
-  const solveGroup = (cores, gems) => {
-    // 1) 각 코어별 후보 조합(Loadout) 생성
-    const coreLoadouts = cores.map((core) => {
-      const capacity = GRADE_CAPACITY[core.grade];
-      const validLoadouts = [];
-
-      const searchCombos = (idx, currentGems, curCost, curPoint, curStats) => {
-        // 조합 저장
-        const pScore = getPriorityScore(core.grade, curPoint);
-        const coreBonus = getCoreBonusPercent(core, curPoint);
-
-        validLoadouts.push({
-          gems: [...currentGems],
-          gemIds: currentGems.map((g) => g.id), // ID로 중복 체크
-          cost: curCost,
-          point: curPoint,
-          stats: { ...curStats }, // { "공격력": 10, "추가 피해": 5 } 형태
-          pScore: pScore,
-          coreBonus: coreBonus,
-          coreRef: core,
-        });
-
-        if (currentGems.length >= 4) return;
-
-        for (let i = idx; i < gems.length; i++) {
-          const gem = gems[i];
-          if (curCost + gem.cost <= capacity) {
-            // 스탯 합산 (풀네임 사용)
-            const nextStats = { ...curStats };
-
-            // 옵션 A 처리
-            if (
-              gem.optionNameA &&
-              gem.optionLevelA > 0 &&
-              DEALER_OPTS.includes(gem.optionNameA)
-            ) {
-              nextStats[gem.optionNameA] =
-                (nextStats[gem.optionNameA] || 0) + gem.optionLevelA;
-            }
-            // 옵션 B 처리
-            if (
-              gem.optionNameB &&
-              gem.optionLevelB > 0 &&
-              DEALER_OPTS.includes(gem.optionNameB)
-            ) {
-              nextStats[gem.optionNameB] =
-                (nextStats[gem.optionNameB] || 0) + gem.optionLevelB;
-            }
-
-            searchCombos(
-              i + 1,
-              [...currentGems, gem],
-              curCost + gem.cost,
-              curPoint + gem.point,
-              nextStats
-            );
-          }
-        }
-      };
-
-      searchCombos(0, [], 0, 0, {});
-
-      // 최적화를 위해 우선순위 높은 순 -> 포인트 높은 순 정렬
-      validLoadouts.sort((a, b) => b.pScore - a.pScore || b.point - a.point);
-      return validLoadouts.slice(0, 500); // 성능상 상위 500개 Cut
+function getGemStats(gem) {
+    let stats = { atk: 0, add: 0, boss: 0 };
+    [gem.opt1Type, gem.opt2Type].forEach((type, idx) => {
+        const lvl = idx === 0 ? gem.opt1Lvl : gem.opt2Lvl;
+        if (type === "공격력") stats.atk += lvl;
+        if (type === "추가 피해") stats.add += lvl;
+        if (type === "보스 피해") stats.boss += lvl;
     });
+    return stats;
+}
 
-    // 2) 백트래킹 (최적 조합 탐색)
-    let bestResult = null;
-    let maxEval = -1;
-    const usedGemIds = new Set();
+function getCoreBonusPct(core, point) {
+    let table = {};
+    const isAncient = core.grade === "고대";
+    if (core.type === "질서") {
+        table = (core.name === "별") ? ORDER_STAR : ORDER_SUN_MOON;
+    } else {
+        if (core.name === "별") table = CHAOS_STAR;
+        else if (["현란한 공격", "불타는 일격"].includes(core.subName)) table = CHAOS_NAMED;
+        else table = CHAOS_OTHER;
+    }
 
-    const backtrack = (coreIdx, selections) => {
-      if (coreIdx === cores.length) {
-        // 평가
-        let totalPriority = 0;
-        let groupTotalStats = { 공격력: 0, "추가 피해": 0, "보스 피해": 0 };
-        let groupCoreMult = 1.0;
+    let thresholds = [];
+    if (core.grade === "영웅") thresholds = [10];
+    else if (core.grade === "전설") thresholds = [14, 10];
+    else thresholds = [20, 19, 18, 17, 14, 10];
 
-        selections.forEach((sel) => {
-          totalPriority += sel.pScore;
-          groupCoreMult *= 1 + sel.coreBonus / 100;
-          for (const [k, v] of Object.entries(sel.stats)) {
-            groupTotalStats[k] = (groupTotalStats[k] || 0) + v;
-          }
+    let bonus = 0;
+    for (let t of thresholds) {
+        if (point >= t) {
+            bonus = table[t];
+            if (isAncient && t >= 17) bonus += 1.00;
+            break;
+        }
+    }
+    return bonus;
+}
+
+// 우선순위 등급 (유물/고대: 17>14>10, 전설: 14>10, 영웅: 10)
+function getTierRank(grade, point) {
+    if (grade === "유물" || grade === "고대") {
+        if (point >= 17) return 3;
+        if (point >= 14) return 2;
+        if (point >= 10) return 1;
+    } else if (grade === "전설") {
+        if (point >= 14) return 3;
+        if (point >= 10) return 2;
+    } else {
+        if (point >= 10) return 3;
+    }
+    return 0;
+}
+
+function generateCoreLoadouts(core, allGems) {
+    const capacity = CORE_CAPACITY[core.grade];
+    const loadouts = [];
+    const gemStats = allGems.map((g) => getGemStats(g));
+
+    function combine(idx, count, mask, currentWill, currentPoint, atk, add, boss) {
+        if (currentWill > capacity) return;
+
+        // 젬 0개 이상인 모든 조합을 저장 (빈 코어도 포함)
+        const bonus = getCoreBonusPct(core, currentPoint);
+        const gemMult =
+            (1 + atk * GEM_COEFF_PCT["공격력"] / 100) *
+            (1 + add * GEM_COEFF_PCT["추가 피해"] / 100) *
+            (1 + boss * GEM_COEFF_PCT["보스 피해"] / 100);
+        const totalMult = (1 + bonus / 100) * gemMult;
+        const tierRank = getTierRank(core.grade, currentPoint);
+        loadouts.push({
+            mask: mask,
+            will: currentWill,
+            point: currentPoint,
+            atk: atk,
+            add: add,
+            boss: boss,
+            coreBonus: bonus,
+            gemMult: gemMult,
+            totalMult: totalMult,
+            tierRank: tierRank
         });
 
-        // 젬 효율 계산 (비교용 임시)
-        let gemMult = 1.0;
-        gemMult *=
-          1 + getGemOptRate("공격력", groupTotalStats["공격력"] || 0) / 100;
-        gemMult *=
-          1 +
-          getGemOptRate("추가 피해", groupTotalStats["추가 피해"] || 0) / 100;
-        gemMult *=
-          1 +
-          getGemOptRate("보스 피해", groupTotalStats["보스 피해"] || 0) / 100;
+        if (count === 4) return;
 
-        const currentCP = groupCoreMult * gemMult;
-        const evalScore = totalPriority + currentCP;
+        for (let i = idx; i < allGems.length; i++) {
+            const g = allGems[i];
+            const s = gemStats[i];
+            combine(
+                i + 1,
+                count + 1,
+                mask | (1n << BigInt(i)),
+                currentWill + g.will,
+                currentPoint + g.point,
+                atk + s.atk,
+                add + s.add,
+                boss + s.boss
+            );
+        }
+    }
 
-        if (evalScore > maxEval) {
-          maxEval = evalScore;
-          bestResult = {
-            selections: [...selections],
-            totalStats: groupTotalStats,
-          };
-        }
-        return;
-      }
+    combine(0, 0, 0n, 0, 0, 0, 0, 0);
 
-      for (const cand of coreLoadouts[coreIdx]) {
-        let conflict = false;
-        for (const id of cand.gemIds) {
-          if (usedGemIds.has(id)) {
-            conflict = true;
-            break;
-          }
-        }
-        if (!conflict) {
-          cand.gemIds.forEach((id) => usedGemIds.add(id));
-          backtrack(coreIdx + 1, [...selections, cand]);
-          cand.gemIds.forEach((id) => usedGemIds.delete(id));
-        }
-      }
+    // 필터링: 티어 등급 -> 전투력 점수
+    loadouts.sort((a, b) => {
+        if (b.tierRank !== a.tierRank) return b.tierRank - a.tierRank;
+        return b.totalMult - a.totalMult;
+    });
+    return loadouts.slice(0, 300);
+}
+
+function findBestGlobalCombination(cands1, cands2, cands3) {
+    let best = {
+        countTier3: -1,
+        countTier2: -1,
+        countTier1: -1,
+        finalMult: -1,
+        combination: null
     };
 
-    backtrack(0, []);
-    return bestResult;
-  };
+    const getPriority = (a, b, c) => {
+        const ranks = [a.tierRank, b.tierRank, c.tierRank];
+        return {
+            countTier3: ranks.filter(r => r === 3).length,
+            countTier2: ranks.filter(r => r >= 2).length,
+            countTier1: ranks.filter(r => r >= 1).length
+        };
+    };
 
-  // 실행
-  const orderRes = solveGroup(orderCores, orderGems);
-  const chaosRes = solveGroup(chaosCores, chaosGems);
+    for (const c1 of cands1) {
+        for (const c2 of cands2) {
+            if ((c1.mask & c2.mask) !== 0n) continue;
+            for (const c3 of cands3) {
+                if ((c1.mask & c3.mask) !== 0n || (c2.mask & c3.mask) !== 0n) continue;
 
-  if (!orderRes || !chaosRes) return null; // 배치 실패
+                const priority = getPriority(c1, c2, c3);
+                const totalCoreMult =
+                    (1 + c1.coreBonus / 100) *
+                    (1 + c2.coreBonus / 100) *
+                    (1 + c3.coreBonus / 100);
+                const totalAtk = c1.atk + c2.atk + c3.atk;
+                const totalAdd = c1.add + c2.add + c3.add;
+                const totalBoss = c1.boss + c2.boss + c3.boss;
 
-  // 4. 최종 결과 집계
-  const finalStats = { 공격력: 0, "추가 피해": 0, "보스 피해": 0 };
-  [orderRes.totalStats, chaosRes.totalStats].forEach((stats) => {
-    for (const [k, v] of Object.entries(stats)) {
-      finalStats[k] += v;
+                const gemMult =
+                    (1 + totalAtk * GEM_COEFF_PCT["공격력"] / 100) *
+                    (1 + totalAdd * GEM_COEFF_PCT["추가 피해"] / 100) *
+                    (1 + totalBoss * GEM_COEFF_PCT["보스 피해"] / 100);
+                const currentFinalMult = totalCoreMult * gemMult;
+
+                if (
+                    priority.countTier3 > best.countTier3 ||
+                    (priority.countTier3 === best.countTier3 &&
+                        (priority.countTier2 > best.countTier2 ||
+                            (priority.countTier2 === best.countTier2 &&
+                                (priority.countTier1 > best.countTier1 ||
+                                    (priority.countTier1 === best.countTier1 &&
+                                        currentFinalMult > best.finalMult)))))
+                ) {
+                    best.countTier3 = priority.countTier3;
+                    best.countTier2 = priority.countTier2;
+                    best.countTier1 = priority.countTier1;
+                    best.finalMult = currentFinalMult;
+                    best.combination = [c1, c2, c3];
+                }
+            }
+        }
     }
-  });
+    return best;
+}
 
-  // 젬 승수
-  const gemAtkRate = getGemOptRate("공격력", finalStats["공격력"]);
-  const gemAddRate = getGemOptRate("추가 피해", finalStats["추가 피해"]);
-  const gemBossRate = getGemOptRate("보스 피해", finalStats["보스 피해"]);
+export function solveArkPassive(inputData) {
+    const orderCores = inputData.cores.filter(c => c.type === "질서");
+    const orderGems = inputData.gems.filter(g => g.type === "질서").map((g, i) => ({ ...g, originalIndex: i }));
+    const orderCands = orderCores.map(c => generateCoreLoadouts(c, orderGems));
+    const orderRes = findBestGlobalCombination(orderCands[0], orderCands[1], orderCands[2]);
 
-  let totalMultiplier = 1.0;
-  totalMultiplier *= 1 + gemAtkRate / 100;
-  totalMultiplier *= 1 + gemAddRate / 100;
-  totalMultiplier *= 1 + gemBossRate / 100;
+    const chaosCores = inputData.cores.filter(c => c.type === "혼돈");
+    const chaosGems = inputData.gems.filter(g => g.type === "혼돈").map((g, i) => ({ ...g, originalIndex: i }));
+    const chaosCands = chaosCores.map(c => generateCoreLoadouts(c, chaosGems));
+    const chaosRes = findBestGlobalCombination(chaosCands[0], chaosCands[1], chaosCands[2]);
 
-  // 코어 승수
-  const allSelections = [...orderRes.selections, ...chaosRes.selections];
-  allSelections.forEach((sel) => {
-    totalMultiplier *= 1 + sel.coreBonus / 100;
-  });
-
-  // 카드 데이터 포맷팅
-  const formatCard = (sel) => {
-    let localGemMult = 1.0;
-
-    // 배치된 각 젬 정보 생성
-    const gemDetails = sel.gems.map((g) => {
-      let singleGemMult = 1.0;
-
-      // 옵션 A 계산
-      if (g.optionNameA) {
-        const rateA = getGemOptRate(g.optionNameA, g.optionLevelA);
-        if (rateA > 0) singleGemMult *= 1 + rateA / 100;
-      }
-      // 옵션 B 계산
-      if (g.optionNameB) {
-        const rateB = getGemOptRate(g.optionNameB, g.optionLevelB);
-        if (rateB > 0) singleGemMult *= 1 + rateB / 100;
-      }
-
-      localGemMult *= singleGemMult;
-
-      return {
-        name: `${g.type}의 젬 #${g.gemNum}`, // ex: "혼돈의 젬 #20"
-        cpRate: ((singleGemMult - 1) * 100).toFixed(2) + "%",
-        cost: g.cost,
-        point: g.point,
-        optionNameA: g.optionNameA,
-        optionLevelA: g.optionLevelA,
-        optionNameB: g.optionNameB,
-        optionLevelB: g.optionLevelB,
-      };
+    const finalResults = [];
+    [ { res: orderRes, gems: orderGems, cores: orderCores }, { res: chaosRes, gems: chaosGems, cores: chaosCores } ].forEach(g => {
+        if (g.res.combination) {
+            g.res.combination.forEach((c, i) => {
+                const gems = g.gems.filter((_, idx) => (c.mask & (1n << BigInt(idx))) !== 0n);
+                finalResults.push({
+                    coreName: g.cores[i].name,
+                    totalWill: c.will,
+                    totalPoint: c.point,
+                    coreBonus: c.coreBonus,
+                    gemMult: c.gemMult,
+                    totalMult: c.totalMult,
+                    atk: c.atk,
+                    add: c.add,
+                    boss: c.boss,
+                    gems: gems
+                });
+            });
+        }
     });
 
-    const combinedMult = (1 + sel.coreBonus / 100) * localGemMult;
+    let coreMult = 1.0;
+    let totalStats = { atk: 0, add: 0, boss: 0 };
+    finalResults.forEach(r => {
+        coreMult *= (1 + r.coreBonus / 100);
+        totalStats.atk += r.atk;
+        totalStats.add += r.add;
+        totalStats.boss += r.boss;
+    });
+    const gemMult =
+        (1 + totalStats.atk * GEM_COEFF_PCT["공격력"] / 100) *
+        (1 + totalStats.add * GEM_COEFF_PCT["추가 피해"] / 100) *
+        (1 + totalStats.boss * GEM_COEFF_PCT["보스 피해"] / 100);
+    const finalMult = coreMult * gemMult;
+
+    return { details: finalResults, totalCPIncrease: ((finalMult - 1) * 100).toFixed(4) };
+}
+
+// UI 어댑터 함수
+export function optimizeArkGrid(inputCores, inputGems) {
+    // 코어 데이터 변환
+    const logicCores = inputCores.map(c => {
+        const [type, name] = c.type.split("의 ");
+        return { type, name, subName: c.subName || "", grade: c.grade };
+    });
+
+    // 젬 데이터 변환
+    const logicGems = inputGems.map(g => ({
+        ...g,
+        will: parseInt(g.cost, 10) || 0,
+        point: parseInt(g.point, 10) || 0,
+        opt1Type: g.opt1Type,
+        opt1Lvl: parseInt(g.opt1Lvl, 10) || 0,
+        opt2Type: g.opt2Type,
+        opt2Lvl: parseInt(g.opt2Lvl, 10) || 0
+    }));
+
+    // 로직 실행
+    const result = solveArkPassive({ cores: logicCores, gems: logicGems });
+
+    // 결과 분류
+    let assignedOrder = [];
+    let assignedChaos = [];
+
+    if (result.details.length === 6) {
+        assignedOrder = result.details.slice(0, 3);
+        assignedChaos = result.details.slice(3, 6);
+    } else if (result.details.length === 3) {
+        const firstGem = result.details[0]?.gems[0];
+        if (firstGem && firstGem.type === "혼돈") {
+            assignedChaos = result.details;
+        } else {
+            assignedOrder = result.details;
+        }
+    }
+
+    // UI용 카드 포맷팅
+    const formatCard = (originalType, grade, detail) => {
+        if (!detail) {
+            return {
+                coreName: originalType,
+                grade: grade,
+                totalCost: 0,
+                totalPoint: 0,
+                coreBonusRate: "0.00",
+                combinedCpRate: "0.00",
+                gems: []
+            };
+        }
+
+        const uiGems = detail.gems.map((g, idx) => {
+            const stats = getGemStats(g);
+            const gemMult =
+                (1 + stats.atk * GEM_COEFF_PCT["공격력"] / 100) *
+                (1 + stats.add * GEM_COEFF_PCT["추가 피해"] / 100) *
+                (1 + stats.boss * GEM_COEFF_PCT["보스 피해"] / 100);
+            const rate = (gemMult - 1) * 100;
+            return {
+                ...g,
+                name: g.name || `${g.type}의 젬 #${idx + 1}`,
+                cpRate: rate
+            };
+        });
+
+        return {
+            coreName: originalType,
+            grade: grade,
+            totalCost: detail.totalWill || detail.gems.reduce((sum, g) => sum + g.will, 0),
+            totalPoint: detail.totalPoint,
+            coreBonusRate: detail.coreBonus.toFixed(2),
+            combinedCpRate: ((detail.totalMult - 1) * 100).toFixed(4),
+            gems: uiGems
+        };
+    };
+
+    // 카드 생성
+    const finalCards = [];
+    for (let i = 0; i < 3; i++) {
+        finalCards.push(formatCard(inputCores[i].type, inputCores[i].grade, assignedOrder[i]));
+    }
+    for (let i = 0; i < 3; i++) {
+        finalCards.push(formatCard(inputCores[i + 3].type, inputCores[i + 3].grade, assignedChaos[i]));
+    }
 
     return {
-      coreName: sel.coreRef.type,
-      grade: sel.coreRef.grade,
-      totalCost: sel.cost,
-      totalPoint: sel.point,
-      coreBonusRate: sel.coreBonus.toFixed(2),
-      combinedCpRate: ((combinedMult - 1) * 100).toFixed(3),
-      gems: gemDetails,
+        finalCombatPowerIncrease: result.totalCPIncrease,
+        cards: finalCards
     };
-  };
-
-  return {
-    finalCombatPowerIncrease: ((totalMultiplier - 1) * 100).toFixed(3),
-    cards: allSelections.map(formatCard),
-  };
 }

@@ -2,7 +2,33 @@ import { useState, useEffect } from "react";
 import "./Presets.css";
 
 const MAX_PRESETS = 20;
-const STORAGE_KEY = "arkgrid-presets";
+const STORAGE_KEY = "presets";
+const LEGACY_STORAGE_KEY = "arkgrid-presets";
+
+const normalizePresetGems = (gems = []) =>
+  gems.map((g, idx) => ({
+    ...g,
+    opt1Type: g.opt1Type ?? g.optionNameA ?? "",
+    opt1Lvl: g.opt1Lvl ?? g.optionLevelA ?? 0,
+    opt2Type: g.opt2Type ?? g.optionNameB ?? "",
+    opt2Lvl: g.opt2Lvl ?? g.optionLevelB ?? 0,
+    name: g.name || `${g.type}의 젬 #${g.gemNum || idx + 1}`,
+  }));
+
+const normalizePresetCores = (cores = {}) => {
+  const next = { ...cores };
+  Object.keys(next).forEach((key) => {
+    const core = next[key];
+    if (!core) return;
+    if (core.subName === undefined && core.tier1Option !== undefined) {
+      core.subName = core.tier1Option || "";
+    }
+    if (core.isTier1 === undefined) {
+      core.isTier1 = false;
+    }
+  });
+  return next;
+};
 
 export default function Presets({ cores, gems, role, onLoad }) {
   const [presets, setPresets] = useState([]);
@@ -14,8 +40,25 @@ export default function Presets({ cores, gems, role, onLoad }) {
     if (saved) {
       try {
         setPresets(JSON.parse(saved));
+        return;
       } catch (e) {
         console.error("Failed to load presets:", e);
+      }
+    }
+
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      try {
+        const parsed = JSON.parse(legacy);
+        const migrated = parsed.map((preset) => ({
+          ...preset,
+          cores: normalizePresetCores(preset.cores),
+          gems: normalizePresetGems(preset.gems),
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        setPresets(migrated);
+      } catch (e) {
+        console.error("Failed to migrate presets:", e);
       }
     }
   }, []);

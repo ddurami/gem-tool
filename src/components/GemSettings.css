@@ -108,6 +108,17 @@
   flex-shrink: 0;
 }
 
+/* 전체 제거 버튼 영역 */
+.gem-delete-all {
+  display: flex;
+  justify-content: center;
+  padding: 8px 10px;
+}
+
+.gem-delete-all .btn {
+  width: 100%;
+}
+
 .gem-item-header {
   display: flex;
   justify-content: space-between;

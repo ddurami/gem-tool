@@ -25,31 +25,31 @@ export default function GemSettings({ gems, setGems, onReset }) {
   const [formState, setFormState] = useState({
     cost: 3,
     point: 5,
-    optionNameA: "",
-    optionLevelA: 1,
-    optionNameB: "",
-    optionLevelB: 1,
+    opt1Type: "",
+    opt1Lvl: 1,
+    opt2Type: "",
+    opt2Lvl: 1,
   });
 
   const handleFormChange = (field, value) => {
-    if (field === "optionNameA") {
-      if (formState.optionNameA === value) {
-        setFormState((prev) => ({ ...prev, optionNameA: "", optionLevelA: 1 }));
+    if (field === "opt1Type") {
+      if (formState.opt1Type === value) {
+        setFormState((prev) => ({ ...prev, opt1Type: "", opt1Lvl: 1 }));
       } else {
         setFormState((prev) => ({
           ...prev,
-          optionNameA: value,
-          optionLevelA: 1,
+          opt1Type: value,
+          opt1Lvl: 1,
         }));
       }
-    } else if (field === "optionNameB") {
-      if (formState.optionNameB === value) {
-        setFormState((prev) => ({ ...prev, optionNameB: "", optionLevelB: 1 }));
+    } else if (field === "opt2Type") {
+      if (formState.opt2Type === value) {
+        setFormState((prev) => ({ ...prev, opt2Type: "", opt2Lvl: 1 }));
       } else {
         setFormState((prev) => ({
           ...prev,
-          optionNameB: value,
-          optionLevelB: 1,
+          opt2Type: value,
+          opt2Lvl: 1,
         }));
       }
     } else {
@@ -59,25 +59,27 @@ export default function GemSettings({ gems, setGems, onReset }) {
 
   const handleAddGem = () => {
     const typeGems = gems.filter((g) => g.type === addType);
+    const gemNum = typeGems.length + 1;
     const newGem = {
       id: `gem-${gemIdCounter++}`,
       type: addType,
-      gemNum: typeGems.length + 1,
+      name: `${addType}의 젬 #${gemNum}`,
+      gemNum: gemNum,
       cost: formState.cost,
       point: formState.point,
-      optionNameA: formState.optionNameA || "",
-      optionLevelA: formState.optionNameA ? formState.optionLevelA : 0,
-      optionNameB: formState.optionNameB || "",
-      optionLevelB: formState.optionNameB ? formState.optionLevelB : 0,
+      opt1Type: formState.opt1Type || "",
+      opt1Lvl: formState.opt1Type ? formState.opt1Lvl : 0,
+      opt2Type: formState.opt2Type || "",
+      opt2Lvl: formState.opt2Type ? formState.opt2Lvl : 0,
     };
     setGems((prev) => [...prev, newGem]);
 
     setFormState((prev) => ({
       ...prev,
-      optionNameA: "",
-      optionLevelA: 1,
-      optionNameB: "",
-      optionLevelB: 1,
+      opt1Type: "",
+      opt1Lvl: 1,
+      opt2Type: "",
+      opt2Lvl: 1,
     }));
   };
 
@@ -86,10 +88,23 @@ export default function GemSettings({ gems, setGems, onReset }) {
       const filtered = prev.filter((g) => g.id !== id);
       const orderGems = filtered
         .filter((g) => g.type === "질서")
-        .map((g, i) => ({ ...g, gemNum: i + 1 }));
+        .map((g, i) => ({ ...g, gemNum: i + 1, name: `질서의 젬 #${i + 1}` }));
       const chaosGems = filtered
         .filter((g) => g.type === "혼돈")
-        .map((g, i) => ({ ...g, gemNum: i + 1 }));
+        .map((g, i) => ({ ...g, gemNum: i + 1, name: `혼돈의 젬 #${i + 1}` }));
+      return [...orderGems, ...chaosGems];
+    });
+  };
+
+  const handleDeleteAllByType = (type) => {
+    setGems((prev) => {
+      const filtered = prev.filter((g) => g.type !== type);
+      const orderGems = filtered
+        .filter((g) => g.type === "질서")
+        .map((g, i) => ({ ...g, gemNum: i + 1, name: `질서의 젬 #${i + 1}` }));
+      const chaosGems = filtered
+        .filter((g) => g.type === "혼돈")
+        .map((g, i) => ({ ...g, gemNum: i + 1, name: `혼돈의 젬 #${i + 1}` }));
       return [...orderGems, ...chaosGems];
     });
   };
@@ -101,21 +116,21 @@ export default function GemSettings({ gems, setGems, onReset }) {
 
         const updated = { ...g };
 
-        if (field === "optionNameA") {
+        if (field === "opt1Type") {
           if (!value) {
-            updated.optionNameA = "";
-            updated.optionLevelA = 0;
+            updated.opt1Type = "";
+            updated.opt1Lvl = 0;
           } else {
-            updated.optionNameA = value;
-            if (updated.optionLevelA === 0) updated.optionLevelA = 1;
+            updated.opt1Type = value;
+            if (updated.opt1Lvl === 0) updated.opt1Lvl = 1;
           }
-        } else if (field === "optionNameB") {
+        } else if (field === "opt2Type") {
           if (!value) {
-            updated.optionNameB = "";
-            updated.optionLevelB = 0;
+            updated.opt2Type = "";
+            updated.opt2Lvl = 0;
           } else {
-            updated.optionNameB = value;
-            if (updated.optionLevelB === 0) updated.optionLevelB = 1;
+            updated.opt2Type = value;
+            if (updated.opt2Lvl === 0) updated.opt2Lvl = 1;
           }
         } else {
           updated[field] = value;
@@ -131,9 +146,9 @@ export default function GemSettings({ gems, setGems, onReset }) {
   const chaosCount = gems.filter((g) => g.type === "혼돈").length;
 
   const getDisabledOptionsA = () =>
-    formState.optionNameB ? [formState.optionNameB] : [];
+    formState.opt2Type ? [formState.opt2Type] : [];
   const getDisabledOptionsB = () =>
-    formState.optionNameA ? [formState.optionNameA] : [];
+    formState.opt1Type ? [formState.opt1Type] : [];
 
   return (
     <div className="card gem-settings">
@@ -199,13 +214,13 @@ export default function GemSettings({ gems, setGems, onReset }) {
           </div>
 
           <div className="form-row">
-            {!formState.optionNameA ? (
+            {!formState.opt1Type ? (
               <div className="btn-group">
                 {OPTION_FULL_NAMES.map((opt) => (
                   <button
                     key={opt}
                     className="btn"
-                    onClick={() => handleFormChange("optionNameA", opt)}
+                    onClick={() => handleFormChange("opt1Type", opt)}
                     disabled={getDisabledOptionsA().includes(opt)}
                   >
                     {OPTION_DISPLAY[opt]}
@@ -218,10 +233,10 @@ export default function GemSettings({ gems, setGems, onReset }) {
                   <button
                     className="btn active"
                     onClick={() =>
-                      handleFormChange("optionNameA", formState.optionNameA)
+                      handleFormChange("opt1Type", formState.opt1Type)
                     }
                   >
-                    {OPTION_DISPLAY[formState.optionNameA]}
+                    {OPTION_DISPLAY[formState.opt1Type]}
                   </button>
                 </span>
                 <div className="btn-group">
@@ -229,9 +244,9 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     <button
                       key={lv}
                       className={`btn ${
-                        formState.optionLevelA === lv ? "active" : ""
+                        formState.opt1Lvl === lv ? "active" : ""
                       }`}
-                      onClick={() => handleFormChange("optionLevelA", lv)}
+                      onClick={() => handleFormChange("opt1Lvl", lv)}
                     >
                       {lv}
                     </button>
@@ -242,13 +257,13 @@ export default function GemSettings({ gems, setGems, onReset }) {
           </div>
 
           <div className="form-row">
-            {!formState.optionNameB ? (
+            {!formState.opt2Type ? (
               <div className="btn-group">
                 {OPTION_FULL_NAMES.map((opt) => (
                   <button
                     key={opt}
                     className="btn"
-                    onClick={() => handleFormChange("optionNameB", opt)}
+                    onClick={() => handleFormChange("opt2Type", opt)}
                     disabled={getDisabledOptionsB().includes(opt)}
                   >
                     {OPTION_DISPLAY[opt]}
@@ -261,10 +276,10 @@ export default function GemSettings({ gems, setGems, onReset }) {
                   <button
                     className="btn active"
                     onClick={() =>
-                      handleFormChange("optionNameB", formState.optionNameB)
+                      handleFormChange("opt2Type", formState.opt2Type)
                     }
                   >
-                    {OPTION_DISPLAY[formState.optionNameB]}
+                    {OPTION_DISPLAY[formState.opt2Type]}
                   </button>
                 </span>
                 <div className="btn-group">
@@ -272,9 +287,9 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     <button
                       key={lv}
                       className={`btn ${
-                        formState.optionLevelB === lv ? "active" : ""
+                        formState.opt2Lvl === lv ? "active" : ""
                       }`}
-                      onClick={() => handleFormChange("optionLevelB", lv)}
+                      onClick={() => handleFormChange("opt2Lvl", lv)}
                     >
                       {lv}
                     </button>
@@ -314,7 +329,16 @@ export default function GemSettings({ gems, setGems, onReset }) {
             {filteredGems.length === 0 ? (
               <div className="empty-state">{activeTab}의 젬이 없습니다.</div>
             ) : (
-              filteredGems.map((gem) => (
+              <>
+                <div className="gem-item gem-delete-all">
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => handleDeleteAllByType(activeTab)}
+                  >
+                    {activeTab}의 젬 전체 제거
+                  </button>
+                </div>
+                {filteredGems.map((gem) => (
                 <div key={gem.id} className="gem-item">
                   <div className="gem-item-header">
                     <span className="gem-name">
@@ -351,9 +375,9 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     </select>
                     <select
                       className="select-base"
-                      value={gem.optionNameA}
+                      value={gem.opt1Type}
                       onChange={(e) =>
-                        handleGemChange(gem.id, "optionNameA", e.target.value)
+                        handleGemChange(gem.id, "opt1Type", e.target.value)
                       }
                     >
                       <option value="">-</option>
@@ -361,7 +385,7 @@ export default function GemSettings({ gems, setGems, onReset }) {
                         <option
                           key={`${gem.id}-optA-${opt}`}
                           value={opt}
-                          disabled={gem.optionNameB === opt}
+                          disabled={gem.opt2Type === opt}
                         >
                           {OPTION_DISPLAY[opt]}
                         </option>
@@ -369,18 +393,18 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     </select>
                     <select
                       className="select-base"
-                      value={gem.optionNameA ? gem.optionLevelA : ""}
+                      value={gem.opt1Type ? gem.opt1Lvl : ""}
                       onChange={(e) =>
                         handleGemChange(
                           gem.id,
-                          "optionLevelA",
+                          "opt1Lvl",
                           Number(e.target.value)
                         )
                       }
-                      disabled={!gem.optionNameA}
+                      disabled={!gem.opt1Type}
                     >
-                      {!gem.optionNameA && <option value="">-</option>}
-                      {gem.optionNameA &&
+                      {!gem.opt1Type && <option value="">-</option>}
+                      {gem.opt1Type &&
                         LEVEL_OPTIONS.map((lv) => (
                           <option key={`${gem.id}-lvA-${lv}`} value={lv}>
                             {lv}
@@ -406,9 +430,9 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     </select>
                     <select
                       className="select-base"
-                      value={gem.optionNameB}
+                      value={gem.opt2Type}
                       onChange={(e) =>
-                        handleGemChange(gem.id, "optionNameB", e.target.value)
+                        handleGemChange(gem.id, "opt2Type", e.target.value)
                       }
                     >
                       <option value="">-</option>
@@ -416,7 +440,7 @@ export default function GemSettings({ gems, setGems, onReset }) {
                         <option
                           key={`${gem.id}-optB-${opt}`}
                           value={opt}
-                          disabled={gem.optionNameA === opt}
+                          disabled={gem.opt1Type === opt}
                         >
                           {OPTION_DISPLAY[opt]}
                         </option>
@@ -424,18 +448,18 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     </select>
                     <select
                       className="select-base"
-                      value={gem.optionNameB ? gem.optionLevelB : ""}
+                      value={gem.opt2Type ? gem.opt2Lvl : ""}
                       onChange={(e) =>
                         handleGemChange(
                           gem.id,
-                          "optionLevelB",
+                          "opt2Lvl",
                           Number(e.target.value)
                         )
                       }
-                      disabled={!gem.optionNameB}
+                      disabled={!gem.opt2Type}
                     >
-                      {!gem.optionNameB && <option value="">-</option>}
-                      {gem.optionNameB &&
+                      {!gem.opt2Type && <option value="">-</option>}
+                      {gem.opt2Type &&
                         LEVEL_OPTIONS.map((lv) => (
                           <option key={`${gem.id}-lvB-${lv}`} value={lv}>
                             {lv}
@@ -444,7 +468,8 @@ export default function GemSettings({ gems, setGems, onReset }) {
                     </select>
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
         </div>
