@@ -129,7 +129,7 @@ function generateCoreLoadouts(core, allGems) {
         if (b.tierRank !== a.tierRank) return b.tierRank - a.tierRank;
         return b.totalMult - a.totalMult;
     });
-    return loadouts.slice(0, 300);
+    return loadouts.slice(0, 500);
 }
 
 function findBestGlobalCombination(cands1, cands2, cands3) {
